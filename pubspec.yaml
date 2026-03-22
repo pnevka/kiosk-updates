@@ -1,0 +1,42 @@
+name: kiosk
+description: "Информационный киоск КДЦ Тимоново"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  google_fonts: ^6.1.0
+  intl: ^0.20.2
+  window_manager: ^0.3.7
+  screen_retriever: ^0.1.9
+  image_picker: ^1.0.7
+  path_provider: ^2.1.2
+  uuid: ^4.3.3
+  photo_view: ^0.15.0
+  video_player: ^2.8.2
+  http: ^1.1.0
+  package_info_plus: ^5.0.1
+  url_launcher: ^6.2.1
+  archive: ^3.4.10
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo.png
+    - Data/header_contacts.jpg
+    - Data/Contacts/site.png
+    - Data/Contacts/vk.png
+    - Data/Contacts/telegram.png
+    - Data/Contacts/max.png

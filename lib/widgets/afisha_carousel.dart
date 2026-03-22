@@ -1,0 +1,179 @@
+import 'dart:async';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import '../utils/constants.dart';
+import '../services/data_service.dart';
+import '../screens/afisha_screen.dart';
+
+class AfishaCarousel extends StatefulWidget {
+  const AfishaCarousel({super.key});
+
+  @override
+  State<AfishaCarousel> createState() => _AfishaCarouselState();
+}
+
+class _AfishaCarouselState extends State<AfishaCarousel> {
+  late PageController _pageController;
+  int _currentPage = 0;
+  Timer? _timer;
+  final _dataService = DataService();
+  List<EventData> _events = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.35, initialPage: 50);
+    _loadEvents();
+  }
+
+  @override
+  void didUpdateWidget(AfishaCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _loadEvents();
+  }
+
+  Future<void> _loadEvents() async {
+    await _dataService.loadEvents();
+    setState(() {
+      _events = _dataService.getEnabledEvents();
+      _isLoading = false;
+    });
+    _startAutoScroll();
+  }
+
+  void _startAutoScroll() {
+    if (_events.isEmpty) return;
+
+    _timer?.cancel();
+    // Start scrolling after a delay
+    _timer = Timer.periodic(AppDurations.carouselInterval, (timer) {
+      if (_pageController.hasClients && _events.isNotEmpty) {
+        // Always scroll to next page (no wrapping needed with large itemCount)
+        _pageController.nextPage(
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _openEventDetail(EventData event) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EventDetailScreen(event: event),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return SizedBox(
+        height: double.infinity,
+        width: double.infinity,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_events.isEmpty) {
+      return SizedBox(
+        height: double.infinity,
+        width: double.infinity,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.event_busy, size: 64, color: AppColors.textSecondary),
+              const SizedBox(height: 16),
+              Text(
+                'Афиша пуста',
+                style: AppTextStyles.screensaverHint.copyWith(fontSize: 18),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SizedBox(
+          height: constraints.maxHeight,
+          width: constraints.maxWidth,
+          child: PageView.builder(
+            controller: _pageController,
+            physics: const BouncingScrollPhysics(),
+            itemCount: _events.length * 100,
+            onPageChanged: (index) {
+              setState(() {
+                _currentPage = index % _events.length;
+              });
+            },
+            itemBuilder: (context, index) {
+              return _buildEventCard(_events[index % _events.length], index % _events.length, constraints.maxHeight);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEventCard(EventData event, int index, double carouselHeight) {
+    return AnimatedBuilder(
+      animation: _pageController,
+      builder: (context, child) {
+        double value = 1.0;
+        if (_pageController.position.haveDimensions) {
+          final currentPage = _pageController.page!;
+          value = currentPage - index;
+          value = (1 - (value.abs() * 0.2)).clamp(0.0, 1.0);
+        }
+        return Center(
+          child: SizedBox(
+            width: carouselHeight * 0.56, // 9:16 aspect ratio
+            height: carouselHeight * 0.95,
+            child: child,
+          ),
+        );
+      },
+      child: GestureDetector(
+        onTap: () => _openEventDetail(event),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppSizes.cardBorderRadius),
+            color: Colors.transparent,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppSizes.cardBorderRadius),
+            child: Stack(
+              children: [
+                if (event.imagePath.isNotEmpty && File(event.imagePath).existsSync())
+                  Positioned.fill(
+                    child: Image.file(
+                      File(event.imagePath),
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                else
+                  Container(
+                    color: Colors.transparent,
+                    child: const Icon(Icons.image, size: 64, color: AppColors.textSecondary),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

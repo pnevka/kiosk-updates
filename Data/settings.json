@@ -1,0 +1,9 @@
+{
+  "AdminPasswordHash": "WZRHGrsBESr8wYFZ9sx0tPURuZgG2lmzyvWpwXPKz8U=",
+  "IdleTimeoutSeconds": 300,
+  "SlideshowIntervalSeconds": 5,
+  "GalleryToPosterRatio": 12,
+  "UsePostersInSlideshow": true,
+  "UseGalleryInSlideshow": true,
+  "ShuffleMedia": false
+}
