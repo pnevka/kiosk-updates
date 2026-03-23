@@ -367,12 +367,12 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       itemCount: _albums.length,
       itemBuilder: (context, index) {
         final album = _albums[index];
         return Container(
-          margin: const EdgeInsets.only(bottom: 16),
+          margin: const EdgeInsets.only(bottom: 20),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
@@ -384,131 +384,153 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Cover image
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                child: AspectRatio(
-                  aspectRatio: 16/9,
-                  child: album.coverImagePath != null && File(album.coverImagePath!).existsSync()
-                      ? Image.file(File(album.coverImagePath!), fit: BoxFit.cover)
-                      : Container(
-                          color: AppColors.background,
-                          child: const Icon(Icons.photo_library, size: 48, color: AppColors.textSecondary),
-                        ),
-                ),
-              ),
+              // Header with title and actions
               Padding(
                 padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(
-                      album.title,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Text(
+                        album.title,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    if (album.description != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        album.description!,
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    Text(
-                      '${album.media.length} фото/видео',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                    ),
-                    const SizedBox(height: 12),
+                    // Toggle
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Toggle
-                        Expanded(
-                          child: Row(
-                            children: [
-                              const Text('Показывать:', style: TextStyle(color: AppColors.textSecondary)),
-                              Switch(
-                                value: album.isEnabled,
-                                onChanged: (value) async {
-                                  await _dataService.toggleAlbum(album.id);
-                                  _loadAlbums();
-                                },
-                                activeColor: AppColors.primary,
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Add media button
-                        PopupMenuButton<String>(
-                          onSelected: (value) => _addMediaToAlbum(album.id, value == 'video'),
-                          icon: const Icon(Icons.add_circle, color: AppColors.accent),
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(value: 'photo', child: Text('Добавить фото')),
-                            const PopupMenuItem(value: 'video', child: Text('Добавить видео')),
-                          ],
-                        ),
-                        // Delete album
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteAlbum(album.id),
-                          tooltip: 'Удалить альбом',
+                        const Text('Показывать:', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                        Switch(
+                          value: album.isEnabled,
+                          onChanged: (value) async {
+                            await _dataService.toggleAlbum(album.id);
+                            _loadAlbums();
+                          },
+                          activeColor: AppColors.primary,
                         ),
                       ],
                     ),
-                    // Media list
-                    if (album.media.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: 80,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: album.media.length,
-                          itemBuilder: (context, i) {
-                            final media = album.media[i];
-                            return Stack(
+                    const SizedBox(width: 8),
+                    // Add media button
+                    PopupMenuButton<String>(
+                      onSelected: (value) => _addMediaToAlbum(album.id, value == 'video'),
+                      icon: const Icon(Icons.add_circle, color: AppColors.accent, size: 28),
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(value: 'photo', child: Text('Добавить фото')),
+                        const PopupMenuItem(value: 'video', child: Text('Добавить видео')),
+                      ],
+                    ),
+                    // Edit button
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: AppColors.textPrimary),
+                      onPressed: () => _editAlbum(album),
+                    ),
+                    // Delete button
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _deleteAlbum(album.id),
+                    ),
+                  ],
+                ),
+              ),
+              // Media grid - scrollable horizontally
+              SizedBox(
+                height: 140,
+                child: album.media.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'Нет медиафайлов\nДобавьте фото или видео',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                        ),
+                      )
+                    : ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        itemCount: album.media.length,
+                        itemBuilder: (context, i) {
+                          final media = album.media[i];
+                          // Пропускаем превью
+                          if (media.id.endsWith('_thumb')) {
+                            return const SizedBox.shrink();
+                          }
+                          return Container(
+                            width: 180,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Stack(
                               children: [
-                                Container(
-                                  width: 80,
-                                  margin: const EdgeInsets.only(right: 4),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: AppColors.primary, width: 1),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: media.isVideo
-                                        ? Container(
-                                            color: Colors.black54,
-                                            child: const Icon(Icons.videocam, color: Colors.white),
-                                          )
-                                        : Image.file(File(media.filePath), fit: BoxFit.cover),
-                                  ),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: media.isVideo
+                                      ? Container(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [Colors.deepPurple.shade800, Colors.blue.shade800],
+                                            ),
+                                          ),
+                                          child: const Icon(Icons.videocam, color: Colors.white70, size: 40),
+                                        )
+                                      : (media.filePath.isNotEmpty && File(media.filePath).existsSync())
+                                          ? Image.file(
+                                              File(media.filePath),
+                                              fit: BoxFit.cover,
+                                              width: double.infinity,
+                                              height: double.infinity,
+                                            )
+                                          : const Icon(Icons.image, color: AppColors.textSecondary),
                                 ),
+                                // Delete button
                                 Positioned(
-                                  top: 2,
-                                  right: 2,
+                                  top: 4,
+                                  right: 4,
                                   child: GestureDetector(
                                     onTap: () => _removeMedia(album.id, media.id),
                                     child: Container(
-                                      padding: const EdgeInsets.all(2),
-                                      decoration: const BoxDecoration(
-                                        color: Colors.red,
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.withOpacity(0.8),
                                         shape: BoxShape.circle,
                                       ),
-                                      child: const Icon(Icons.close, size: 12, color: Colors.white),
+                                      child: const Icon(Icons.close, color: Colors.white, size: 16),
                                     ),
                                   ),
                                 ),
+                                if (media.isVideo)
+                                  Positioned(
+                                    bottom: 4,
+                                    right: 4,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black54,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text(
+                                        'ВИДЕО',
+                                        style: TextStyle(color: Colors.white, fontSize: 8),
+                                      ),
+                                    ),
+                                  ),
                               ],
-                            );
-                          },
-                        ),
+                            ),
+                          );
+                        },
                       ),
-                    ],
-                  ],
+              ),
+              // Footer with count
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  '${album.media.where((m) => !m.id.endsWith('_thumb')).length} фото/видео',
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
                 ),
               ),
             ],
@@ -516,5 +538,12 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
         );
       },
     );
+  }
+
+  void _editAlbum(AlbumData album) {
+    _albumTitleController.text = album.title;
+    _albumDescController.text = album.description ?? '';
+    _albumCoverPath = album.coverImagePath;
+    _tabController.animateTo(0);
   }
 }

@@ -39,12 +39,15 @@ class VideoThumbnailService {
       final thumbPath = '${thumbDir.path}\\$fileName';
 
       // FFmpeg команда для создания превью из первого кадра
-      // -ss 00:00:00 - переходим к началу
+      // -ss 00:00:01 - переходим к началу (1 секунда для надёжности)
       // -i input - входной файл
       // -vframes 1 - только 1 кадр
       // -vf scale=400:-1 - масштабируем до 400px по ширине
       // -y - перезаписать если существует
-      final ffmpegCommand = '-ss 00:00:01 -i "$videoPath" -vframes 1 -vf scale=400:-1 -y "$thumbPath"';
+      final normalizedVideoPath = videoPath.replaceAll('\\', '/');
+      final normalizedThumbPath = thumbPath.replaceAll('\\', '/');
+      
+      final ffmpegCommand = '-ss 00:00:01 -i "$normalizedVideoPath" -vframes 1 -vf scale=400:-1 -y "$normalizedThumbPath"';
       
       print('[VideoThumbnail] 🎬 Запуск FFmpeg...');
       print('[VideoThumbnail] Команда: $ffmpegCommand');
@@ -60,11 +63,26 @@ class VideoThumbnailService {
           print('[VideoThumbnail] ✅ Превью создано: $thumbPath (${thumbSize ~/ 1024} КБ)');
           return thumbPath;
         } else {
-          print('[VideoThumbnail] ❌ Файл превью не создан');
+          print('[VideoThumbnail] ❌ Файл превью не создан после FFmpeg');
         }
       } else {
         final failStackTrace = await session.getFailStackTrace();
         print('[VideoThumbnail] ❌ Ошибка FFmpeg: $failStackTrace');
+        
+        // Пробуем без масштабирования
+        print('[VideoThumbnail] Пробуем без масштабирования...');
+        final ffmpegCommand2 = '-ss 00:00:01 -i "$normalizedVideoPath" -vframes 1 -y "$normalizedThumbPath"';
+        final session2 = await FFmpegKit.execute(ffmpegCommand2);
+        final returnCode2 = await session2.getReturnCode();
+        
+        if (ReturnCode.isSuccess(returnCode2)) {
+          final thumbFile = File(thumbPath);
+          if (await thumbFile.exists()) {
+            print('[VideoThumbnail] ✅ Превью создано (без масштабирования): $thumbPath');
+            return thumbPath;
+          }
+        }
+        print('[VideoThumbnail] ❌ Вторая попытка не удалась');
       }
       
       return null;

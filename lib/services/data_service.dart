@@ -296,6 +296,10 @@ class DataService {
         return getEnabledEvents();
       }
 
+      // Очищаем старую папку ПЕРЕД скачиванием новых
+      print('[DataService] Очистка старой папки с афишами...');
+      await cleanupTempAfisha();
+
       // Скачиваем изображения локально
       print('[DataService] Скачивание ${siteEvents.length} изображений...');
       final localEvents = await _downloadImagesLocally(siteEvents);

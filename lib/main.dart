@@ -13,10 +13,6 @@ Future<void> main() async {
   // Инициализируем media_kit для Windows — это позволит использовать кодеки из K-Lite
   VideoPlayerMediaKit.ensureInitialized(windows: true);
 
-  // Очищаем временную папку афиш при старте
-  final dataService = DataService();
-  await dataService.cleanupTempAfisha();
-
   if (Platform.isWindows) {
     await windowManager.ensureInitialized();
 
