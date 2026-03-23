@@ -166,8 +166,12 @@ class _SlideshowScreenState extends State<SlideshowScreen> {
   @override
   void dispose() {
     _slideshowTimer?.cancel();
+    // Сначала останавливаем воспроизведение
     _player?.stop();
+    // Затем освобождаем ресурсы
     _player?.dispose();
+    _player = null;
+    _videoController = null;
     super.dispose();
   }
 

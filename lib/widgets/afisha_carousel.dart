@@ -201,10 +201,20 @@ class _AfishaCarouselState extends State<AfishaCarousel> {
         ),
       );
     } else {
-      print('[AfishaCarousel] Файл не найден: $imagePath');
+      // Файл ещё не загрузился — показываем индикатор загрузки
       return Container(
-        color: Colors.transparent,
-        child: const Icon(Icons.image, size: 64, color: AppColors.textSecondary),
+        color: Colors.black26,
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2),
+            SizedBox(height: 8),
+            Text(
+              'Загрузка...',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ],
+        ),
       );
     }
   }

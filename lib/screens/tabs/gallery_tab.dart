@@ -143,8 +143,10 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
       if (isVideo) {
         // Для видео сначала выбираем файл
         media = await _imagePicker.pickVideo(source: ImageSource.gallery);
-        
+
         if (media != null) {
+          print('[GalleryTab] Видео выбрано: ${media.path}');
+          
           // Затем предлагаем загрузить превью
           final loadThumbnail = await showDialog<bool>(
             context: context,
@@ -166,8 +168,11 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
             ),
           );
           
+          print('[GalleryTab] Превью: $loadThumbnail');
+          
           if (loadThumbnail == true) {
             thumbnail = await _imagePicker.pickImage(source: ImageSource.gallery);
+            print('[GalleryTab] Превью выбрано: ${thumbnail?.path}');
           }
         }
       } else {
@@ -186,6 +191,7 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
         final ext = isVideo ? 'mp4' : 'jpg';
         final newPath = '${albumsDir.path}/media_$fileName.$ext';
         await File(media.path).copy(newPath);
+        print('[GalleryTab] Файл сохранён: $newPath');
 
         String? thumbnailPath;
         if (thumbnail != null) {
@@ -193,6 +199,7 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
           final thumbPath = '${albumsDir.path}/thumb_$fileName.jpg';
           await File(thumbnail.path).copy(thumbPath);
           thumbnailPath = thumbPath;
+          print('[GalleryTab] Превью сохранено: $thumbnailPath');
         }
 
         final mediaData = MediaData(
@@ -203,11 +210,14 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
           createdAt: DateTime.now(),
         );
 
+        print('[GalleryTab] Добавляем в альбом: ${mediaData.toJson()}');
         await _dataService.addMediaToAlbum(albumId, mediaData);
         _showSuccess(isVideo ? 'Видео добавлено' : 'Фото добавлено');
         _loadAlbums();
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('[GalleryTab] Ошибка: $e');
+      print('[GalleryTab] Stack trace: $stackTrace');
       _showError('Ошибка: $e');
     }
   }
