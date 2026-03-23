@@ -25,6 +25,7 @@ class _AfishaCarouselState extends State<AfishaCarousel> {
   final _settingsService = SettingsService();
   List<EventData> _events = [];
   bool _isLoading = true;
+  bool _isPreloading = false;
 
   @override
   void initState() {
@@ -53,8 +54,28 @@ class _AfishaCarouselState extends State<AfishaCarousel> {
         _events = events;
         _isLoading = false;
       });
+      
+      // Предзагружаем изображения в кэш
+      _preloadImages();
     }
     _startAutoScroll();
+  }
+
+  Future<void> _preloadImages() async {
+    if (_isPreloading) return;
+    _isPreloading = true;
+    
+    print('[AfishaCarousel] Предзагрузка ${_events.length} изображений...');
+    
+    for (final event in _events) {
+      if (event.imagePath.startsWith('http')) {
+        // Загружаем в кэш
+        await _downloadAndCacheImage(event.imagePath);
+      }
+    }
+    
+    print('[AfishaCarousel] Предзагрузка завершена');
+    _isPreloading = false;
   }
 
   void _startAutoScroll() {

@@ -374,7 +374,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> with IdleExitMixi
         body: Stack(
           children: [
             // Full screen photo only
-            _buildEventImage(),
+            Positioned.fill(
+              child: Center(
+                child: _buildEventImage(),
+              ),
+            ),
           ],
         ),
       ),
@@ -412,8 +416,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> with IdleExitMixi
           final file = snapshot.data!;
           return Image.file(
             file,
-            fit: BoxFit.contain,
+            fit: BoxFit.cover,
             gaplessPlayback: true,
+            width: double.infinity,
+            height: double.infinity,
           );
         },
       );
@@ -423,7 +429,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> with IdleExitMixi
       if (file.existsSync()) {
         return PhotoView(
           imageProvider: FileImage(file),
-          minScale: PhotoViewComputedScale.contained,
+          minScale: PhotoViewComputedScale.covered,
           maxScale: PhotoViewComputedScale.covered * 2,
         );
       } else {

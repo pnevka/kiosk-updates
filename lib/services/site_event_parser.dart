@@ -56,37 +56,21 @@ class SiteEventParser {
   List<SiteEvent> _parseHtml(String html) {
     final document = parser.parse(html);
     final events = <SiteEvent>[];
-
-    // Ищем все изображения в контенте
-    // Сайт использует Joomla + YOOtheme, ищем по классам и структурам
-    final images = <dom.Element>[];
-    
-    // Ищем изображения в слайдерах и каруселях
-    images.addAll(document.querySelectorAll('.uk-slideshow-items img'));
-    images.addAll(document.querySelectorAll('.uk-slider-items img'));
-    images.addAll(document.querySelectorAll('.carousel img'));
-    images.addAll(document.querySelectorAll('.slider img'));
-    
-    // Ищем в секциях с мероприятиями
-    images.addAll(document.querySelectorAll('[class*="afisha"] img'));
-    images.addAll(document.querySelectorAll('[class*="event"] img'));
-    images.addAll(document.querySelectorAll('[class*="meropriyatie"] img'));
-    
-    // Ищем все изображения в основном контенте
-    images.addAll(document.querySelectorAll('#page#content img'));
-    images.addAll(document.querySelectorAll('.uk-section img'));
-    
-    // Если ничего не найдено, берём все изображения
-    if (images.isEmpty) {
-      images.addAll(document.querySelectorAll('img'));
-    }
-
     final seenUrls = <String>{};
 
-    for (final img in images) {
+    print('[SiteEventParser] Размер HTML: ${html.length} байт');
+
+    // Ищем ВСЕ изображения на странице
+    final allImages = document.querySelectorAll('img');
+    print('[SiteEventParser] Всего изображений: ${allImages.length}');
+
+    for (final img in allImages) {
       String imageUrl = img.attributes['src'] ?? '';
       if (imageUrl.isEmpty) {
         imageUrl = img.attributes['data-src'] ?? '';
+      }
+      if (imageUrl.isEmpty) {
+        imageUrl = img.attributes['data-lazy-src'] ?? '';
       }
       
       // Пропускаем пустые и уже обработанные
@@ -102,43 +86,14 @@ class SiteEventParser {
       seenUrls.add(imageUrl);
 
       // Пытаемся найти заголовок мероприятия
-      String title = '';
-      dom.Element? parent = img.parent;
-      int depth = 0;
-      
-      while (parent != null && depth < 5) {
-        final heading = parent.querySelector('h1, h2, h3, h4, .title, .heading');
-        if (heading != null) {
-          title = heading.text.trim();
-          break;
-        }
-        // Проверяем сам родительский элемент
-        if (parent.classes.any((c) => c.contains('title') || c.contains('heading'))) {
-          title = parent.text.trim();
-          break;
-        }
-        parent = parent.parent;
-        depth++;
-      }
-
-      // Если заголовок не найден, используем alt изображения
-      if (title.isEmpty) {
-        title = img.attributes['alt'] ?? 'Мероприятие';
-      }
+      String title = _findEventTitle(img);
 
       // Пытаемся найти ссылку на мероприятие
-      String? link;
-      dom.Element? linkElement = _findClosestLink(img);
-      if (linkElement != null) {
-        link = linkElement.attributes['href'] ?? '';
-        if (link.isNotEmpty && !link.startsWith('http')) {
-          link = link.startsWith('/') ? '$baseUrl$link' : null;
-        }
-      }
+      String? link = _findEventLink(img);
 
       // Добавляем только если это похоже на изображение мероприятия
-      // (не логотип, не иконка)
       if (_isEventImage(imageUrl, img)) {
+        print('[SiteEventParser] Найдено мероприятие: $title - $imageUrl');
         events.add(SiteEvent(
           imageUrl: imageUrl,
           title: title.isNotEmpty ? title : 'Мероприятие',
@@ -148,6 +103,55 @@ class SiteEventParser {
     }
 
     return events;
+  }
+
+  /// Ищет заголовок мероприятия рядом с изображением
+  String _findEventTitle(dom.Element img) {
+    String title = '';
+    dom.Element? parent = img.parent;
+    int depth = 0;
+    
+    while (parent != null && depth < 5) {
+      // Ищем заголовки внутри родителя
+      final heading = parent.querySelector('h1, h2, h3, h4, h5, .title, .heading, .uk-heading-medium');
+      if (heading != null && heading.text.trim().isNotEmpty) {
+        title = heading.text.trim();
+        break;
+      }
+      
+      // Проверяем следующий элемент после родителя
+      dom.Element? next = parent.nextElementSibling;
+      if (next != null) {
+        final nextHeading = next.querySelector('h1, h2, h3, h4, h5, .title, .heading');
+        if (nextHeading != null && nextHeading.text.trim().isNotEmpty) {
+          title = nextHeading.text.trim();
+          break;
+        }
+      }
+      
+      parent = parent.parent;
+      depth++;
+    }
+
+    // Если не нашли, используем alt
+    if (title.isEmpty) {
+      title = img.attributes['alt'] ?? img.attributes['title'] ?? '';
+    }
+
+    return title;
+  }
+
+  /// Ищет ссылку на мероприятие
+  String? _findEventLink(dom.Element img) {
+    dom.Element? linkElement = _findClosestLink(img);
+    if (linkElement != null) {
+      String link = linkElement.attributes['href'] ?? '';
+      if (link.isNotEmpty && !link.startsWith('http')) {
+        return link.startsWith('/') ? '$baseUrl$link' : null;
+      }
+      return link.isNotEmpty ? link : null;
+    }
+    return null;
   }
 
   /// Проверяет, является ли изображение изображением мероприятия
