@@ -147,6 +147,7 @@ class MediaData {
   final String filePath;
   final bool isVideo;
   final String? title;
+  final String? thumbnailPath; // Путь к превью для видео
   final DateTime createdAt;
 
   MediaData({
@@ -154,6 +155,7 @@ class MediaData {
     required this.filePath,
     required this.isVideo,
     this.title,
+    this.thumbnailPath,
     required this.createdAt,
   });
 
@@ -163,6 +165,7 @@ class MediaData {
       'filePath': filePath,
       'isVideo': isVideo,
       'title': title,
+      'thumbnailPath': thumbnailPath,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -173,6 +176,7 @@ class MediaData {
       filePath: json['filePath'] ?? '',
       isVideo: json['isVideo'] ?? false,
       title: json['title'],
+      thumbnailPath: json['thumbnailPath'],
       createdAt: DateTime.parse(json['createdAt']),
     );
   }

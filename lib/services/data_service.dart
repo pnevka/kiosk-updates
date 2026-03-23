@@ -275,6 +275,7 @@ class DataService {
 
   // Site events parsing
   List<EventData> _siteEvents = [];
+  bool _isLoadingSiteEvents = false; // Блокировка повторной загрузки
 
   /// Загружает афишу с сайта
   /// Если enableSiteParsing = false, возвращает локальные события
@@ -282,10 +283,18 @@ class DataService {
     required bool enableSiteParsing,
     required String siteUrl,
   }) async {
+    // Если уже загружаем — возвращаем текущие данные
+    if (_isLoadingSiteEvents) {
+      print('[DataService] Уже загружаем афишу, пропускаем...');
+      return _siteEvents.isNotEmpty ? _siteEvents : getEnabledEvents();
+    }
+
     if (!enableSiteParsing) {
       // Парсинг отключён — возвращаем локальные события
       return getEnabledEvents();
     }
+
+    _isLoadingSiteEvents = true;
 
     try {
       final parser = SiteEventParser(eventsUrl: siteUrl);
@@ -293,6 +302,7 @@ class DataService {
 
       if (siteEvents.isEmpty) {
         print('[DataService] Сайт недоступен или пуст — используем локальные события');
+        _isLoadingSiteEvents = false;
         return getEnabledEvents();
       }
 
@@ -323,9 +333,11 @@ class DataService {
       // Очищаем старый кэш
       await _cleanupAfishaCache(_siteEvents);
       
+      _isLoadingSiteEvents = false;
       return _siteEvents;
     } catch (e) {
       print('[DataService] Ошибка загрузки с сайта: $e — используем локальные события');
+      _isLoadingSiteEvents = false;
       return getEnabledEvents();
     }
   }

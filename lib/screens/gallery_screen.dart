@@ -341,17 +341,24 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                               child: Stack(
                                 children: [
                                   if (media.isVideo)
-                                    // Заглушка для видео с градиентом
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [Colors.deepPurple.shade800, Colors.blue.shade800],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                      ),
-                                      child: const Icon(Icons.play_circle_outline, color: Colors.white70, size: 48),
-                                    )
+                                    // Для видео показываем превью если есть, иначе заглушку
+                                    (media.thumbnailPath != null && File(media.thumbnailPath!).existsSync())
+                                      ? Image.file(
+                                          File(media.thumbnailPath!),
+                                          fit: BoxFit.cover,
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                        )
+                                      : Container(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [Colors.deepPurple.shade800, Colors.blue.shade800],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                          ),
+                                          child: const Icon(Icons.play_circle_outline, color: Colors.white70, size: 48),
+                                        )
                                   else if (media.filePath.isNotEmpty && File(media.filePath).existsSync())
                                     Image.file(
                                       File(media.filePath),

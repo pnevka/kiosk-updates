@@ -138,15 +138,44 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
   Future<void> _addMediaToAlbum(String albumId, bool isVideo) async {
     try {
       XFile? media;
+      XFile? thumbnail;
 
       if (isVideo) {
+        // Для видео сначала выбираем файл
         media = await _imagePicker.pickVideo(source: ImageSource.gallery);
+        
+        if (media != null) {
+          // Затем предлагаем загрузить превью
+          final loadThumbnail = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: AppColors.surface,
+              title: const Text('Загрузить превью?', style: TextStyle(color: AppColors.textPrimary)),
+              content: const Text('Хотите загрузить обложку для этого видео?', style: TextStyle(color: AppColors.textSecondary)),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Нет', style: TextStyle(color: AppColors.textSecondary)),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                  child: const Text('Да'),
+                ),
+              ],
+            ),
+          );
+          
+          if (loadThumbnail == true) {
+            thumbnail = await _imagePicker.pickImage(source: ImageSource.gallery);
+          }
+        }
       } else {
         media = await _imagePicker.pickImage(source: ImageSource.gallery);
       }
 
       if (media != null) {
-        // Copy file to albums directory
+        // Copy files to albums directory
         final appDir = await getApplicationDocumentsDirectory();
         final albumsDir = Directory('${appDir.path}/albums');
         if (!await albumsDir.exists()) {
@@ -158,10 +187,19 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
         final newPath = '${albumsDir.path}/media_$fileName.$ext';
         await File(media.path).copy(newPath);
 
+        String? thumbnailPath;
+        if (thumbnail != null) {
+          // Сохраняем превью
+          final thumbPath = '${albumsDir.path}/thumb_$fileName.jpg';
+          await File(thumbnail.path).copy(thumbPath);
+          thumbnailPath = thumbPath;
+        }
+
         final mediaData = MediaData(
           id: fileName,
           filePath: newPath,
           isVideo: isVideo,
+          thumbnailPath: thumbnailPath, // Сохраняем путь к превью
           createdAt: DateTime.now(),
         );
 
