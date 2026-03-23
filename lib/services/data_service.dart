@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import '../models/admin_content.dart';
@@ -295,14 +296,19 @@ class DataService {
         return getEnabledEvents();
       }
 
+      // Скачиваем изображения локально
+      print('[DataService] Скачивание ${siteEvents.length} изображений...');
+      final localEvents = await _downloadImagesLocally(siteEvents);
+      print('[DataService] Изображения загружены локально');
+
       // Конвертируем SiteEvent в EventData
-      _siteEvents = siteEvents.map((siteEvent) {
+      _siteEvents = localEvents.map((siteEvent) {
         return EventData(
           id: const Uuid().v4(),
           title: siteEvent.title.isNotEmpty ? siteEvent.title : 'Мероприятие',
           description: null,
-          imagePath: siteEvent.imageUrl, // URL картинки вместо локального пути
-          date: DateTime.now(), // Дата будет взята из сайта позже (если нужно)
+          imagePath: siteEvent.imageUrl, // Теперь это локальный путь
+          date: DateTime.now(),
           location: '',
           isEnabled: true,
         );
@@ -310,13 +316,77 @@ class DataService {
 
       print('[DataService] Загружено ${_siteEvents.length} мероприятий с сайта');
       
-      // Очищаем кэш — удаляем старые изображения
+      // Очищаем старый кэш
       await _cleanupAfishaCache(_siteEvents);
       
       return _siteEvents;
     } catch (e) {
       print('[DataService] Ошибка загрузки с сайта: $e — используем локальные события');
       return getEnabledEvents();
+    }
+  }
+
+  /// Скачивает изображения с сайта в локальную папку
+  Future<List<SiteEvent>> _downloadImagesLocally(List<SiteEvent> events) async {
+    final localEvents = <SiteEvent>[];
+    
+    // Папка для временных афиш
+    final tempDir = Directory('C:\\kiosk-updates\\temp_afisha');
+    if (await tempDir.exists()) {
+      await tempDir.delete(recursive: true);
+    }
+    await tempDir.create(recursive: true);
+    
+    print('[DataService]Temp папка: ${tempDir.path}');
+    
+    for (int i = 0; i < events.length; i++) {
+      final event = events[i];
+      try {
+        // Скачиваем изображение
+        final response = await http
+            .get(
+              Uri.parse(event.imageUrl),
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+              },
+            )
+            .timeout(const Duration(seconds: 10));
+        
+        if (response.statusCode == 200) {
+          // Сохраняем локально
+          final fileName = 'afisha_${i}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final filePath = '${tempDir.path}\\$fileName';
+          final file = File(filePath);
+          await file.writeAsBytes(response.bodyBytes);
+          
+          localEvents.add(SiteEvent(
+            imageUrl: filePath, // Теперь это локальный путь!
+            title: event.title,
+            link: event.link,
+          ));
+          print('[DataService] Скачано: $fileName');
+        } else {
+          print('[DataService] Ошибка загрузки: ${event.imageUrl}');
+        }
+      } catch (e) {
+        print('[DataService] Ошибка: $e');
+      }
+    }
+    
+    return localEvents;
+  }
+
+  /// Очищает временную папку с афишами
+  Future<void> cleanupTempAfisha() async {
+    try {
+      final tempDir = Directory('C:\\kiosk-updates\\temp_afisha');
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+        print('[DataService] Временная папка удалена');
+      }
+    } catch (e) {
+      print('[DataService] Ошибка очистки: $e');
     }
   }
 

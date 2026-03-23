@@ -5,12 +5,17 @@ import 'package:window_manager/window_manager.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:video_player_media_kit/video_player_media_kit.dart';
 import 'app.dart';
+import 'services/data_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Инициализируем media_kit для Windows — это позволит использовать кодеки из K-Lite
   VideoPlayerMediaKit.ensureInitialized(windows: true);
+
+  // Очищаем временную папку афиш при старте
+  final dataService = DataService();
+  await dataService.cleanupTempAfisha();
 
   if (Platform.isWindows) {
     await windowManager.ensureInitialized();
