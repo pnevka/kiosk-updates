@@ -2,7 +2,7 @@
 # Запускать от имени администратора!
 
 $version = "1.0.1"
-$downloadUrl = "https://github.com/YOUR_USERNAME/kiosk-updates/releases/download/v$version/kiosk-v$version.zip"
+$downloadUrl = "https://github.com/pnevka/kiosk-updates/releases/download/v$version/kiosk-v$version.zip"
 $installPath = "C:\kiosk-updates"
 $tempPath = "$env:TEMP\kiosk-update"
 
