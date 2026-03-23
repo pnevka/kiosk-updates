@@ -15,10 +15,15 @@ class _SettingsTabState extends State<SettingsTab> {
   final _updateService = UpdateService();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _siteUrlController = TextEditingController();
   bool _hasPassword = false;
   bool _slideshowEnabled = false;
   int _slideshowInterval = 30;
   int _idleTimeout = 60;
+  bool _enableSiteParsing = false;
+  String _siteEventsUrl = '/afisha/';
+  int _idleExitTimeout = 180;
+  bool _autoStart = false;
   bool _isCheckingUpdate = false;
   String? _currentVersion;
   String? _latestVersion;
@@ -120,6 +125,11 @@ class _SettingsTabState extends State<SettingsTab> {
       _slideshowEnabled = settings.slideshowEnabled;
       _slideshowInterval = settings.slideshowInterval;
       _idleTimeout = settings.idleTimeout;
+      _enableSiteParsing = settings.enableSiteParsing;
+      _siteEventsUrl = settings.siteEventsUrl;
+      _idleExitTimeout = settings.idleExitTimeout;
+      _autoStart = settings.autoStart;
+      _siteUrlController.text = _siteEventsUrl;
     });
   }
 
@@ -213,6 +223,38 @@ class _SettingsTabState extends State<SettingsTab> {
       _idleTimeout = value;
     });
     _showSuccess('Простой установлен: $value сек');
+  }
+
+  Future<void> _toggleSiteParsing(bool value) async {
+    await _settingsService.setEnableSiteParsing(value);
+    setState(() {
+      _enableSiteParsing = value;
+    });
+    _showSuccess(value ? 'Парсинг сайта включён' : 'Парсинг сайта выключен');
+  }
+
+  Future<void> _setSiteUrl(String url) async {
+    await _settingsService.setSiteEventsUrl(url);
+    setState(() {
+      _siteEventsUrl = url;
+    });
+    _showSuccess('URL установлен: $url');
+  }
+
+  Future<void> _setIdleExitTimeout(int seconds) async {
+    await _settingsService.setIdleExitTimeout(seconds);
+    setState(() {
+      _idleExitTimeout = seconds;
+    });
+    _showSuccess('Таймаут установлен: $seconds сек');
+  }
+
+  Future<void> _toggleAutoStart(bool value) async {
+    await _settingsService.setAutoStart(value);
+    setState(() {
+      _autoStart = value;
+    });
+    _showSuccess(value ? 'Автозапуск включён' : 'Автозапуск выключен');
   }
 
   void _showSuccess(String message) {
@@ -544,6 +586,184 @@ class _SettingsTabState extends State<SettingsTab> {
                 Text(
                   'Слайд-шоу включится через $_idleTimeout сек бездействия. Тап по экрану выключит его.',
                   style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          // Site parsing settings
+          const Text(
+            'Парсинг афиши с сайта',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Включить парсинг сайта',
+                      style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
+                    ),
+                    Switch(
+                      value: _enableSiteParsing,
+                      onChanged: _toggleSiteParsing,
+                      activeColor: AppColors.primary,
+                    ),
+                  ],
+                ),
+                const Divider(color: AppColors.primary, height: 24),
+                // Site URL
+                const Text(
+                  'URL страницы афиши',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _siteUrlController,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: '/afisha/',
+                    hintStyle: const TextStyle(color: AppColors.textSecondary),
+                    filled: true,
+                    fillColor: AppColors.background,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    prefixText: 'https://xn--b1admgmggbb7a6b.xn--p1ai',
+                    prefixStyle: const TextStyle(color: AppColors.textSecondary),
+                  ),
+                  enabled: _enableSiteParsing,
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: _enableSiteParsing
+                      ? () => _setSiteUrl(_siteUrlController.text)
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.all(14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Сохранить URL',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'При включении афиша будет загружаться с сайта при каждом запуске киоска.',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          // Idle exit timeout settings
+          const Text(
+            'Таймаут возврата на главную',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Idle exit timeout
+                const Text(
+                  'Время бездействия до возврата на главную (секунды)',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Slider(
+                        value: _idleExitTimeout.toDouble(),
+                        min: 30,
+                        max: 600,
+                        divisions: 57,
+                        label: '$_idleExitTimeout сек',
+                        activeColor: AppColors.primary,
+                        onChanged: (value) => _setIdleExitTimeout(value.toInt()),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '$_idleExitTimeout',
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'При бездействии в любом экране (галерея, афиша, кружки) через $_idleExitTimeout сек произойдёт возврат на главную. Если видео длиннее таймаута — оно будет воспроизведено до конца.',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          // Auto-start settings
+          const Text(
+            'Автозапуск',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Автозапуск приложения при загрузке Windows',
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
+                ),
+                Switch(
+                  value: _autoStart,
+                  onChanged: _toggleAutoStart,
+                  activeColor: AppColors.primary,
                 ),
               ],
             ),

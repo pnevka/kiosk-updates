@@ -2,7 +2,7 @@ name: kiosk
 description: "Информационный киоск КДЦ Тимоново"
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.5.0
@@ -21,10 +21,16 @@ dependencies:
   uuid: ^4.3.3
   photo_view: ^0.15.0
   video_player: ^2.8.2
+  video_player_media_kit: ^1.0.5
+  media_kit: ^1.1.10
+  media_kit_video: ^1.2.4
+  media_kit_libs_windows_video: any
   http: ^1.1.0
   package_info_plus: ^5.0.1
   url_launcher: ^6.2.1
   archive: ^3.4.10
+  html: ^0.15.4
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:

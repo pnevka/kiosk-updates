@@ -1,18 +1,27 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 class AppSettings {
   String? adminPassword;
   bool slideshowEnabled;
   int slideshowInterval; // in seconds
   int idleTimeout; // seconds before slideshow starts on idle
+  bool enableSiteParsing; // парсинг афиши с сайта
+  String siteEventsUrl; // URL страницы афиши
+  int idleExitTimeout; // секунды до возврата на главную при бездействии
+  bool autoStart; // автозапуск при загрузке Windows
 
   AppSettings({
     this.adminPassword,
     this.slideshowEnabled = false,
     this.slideshowInterval = 30,
     this.idleTimeout = 60,
+    this.enableSiteParsing = false,
+    this.siteEventsUrl = '/afisha/',
+    this.idleExitTimeout = 180, // 3 минуты по умолчанию
+    this.autoStart = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -21,6 +30,10 @@ class AppSettings {
       'slideshowEnabled': slideshowEnabled,
       'slideshowInterval': slideshowInterval,
       'idleTimeout': idleTimeout,
+      'enableSiteParsing': enableSiteParsing,
+      'siteEventsUrl': siteEventsUrl,
+      'idleExitTimeout': idleExitTimeout,
+      'autoStart': autoStart,
     };
   }
 
@@ -30,6 +43,10 @@ class AppSettings {
       slideshowEnabled: json['slideshowEnabled'] ?? false,
       slideshowInterval: json['slideshowInterval'] ?? 30,
       idleTimeout: json['idleTimeout'] ?? 60,
+      enableSiteParsing: json['enableSiteParsing'] ?? false,
+      siteEventsUrl: json['siteEventsUrl'] ?? '/afisha/',
+      idleExitTimeout: json['idleExitTimeout'] ?? 180,
+      autoStart: json['autoStart'] ?? false,
     );
   }
 }
@@ -103,6 +120,61 @@ class SettingsService {
   Future<void> setIdleTimeout(int seconds) async {
     _settings.idleTimeout = seconds;
     await saveSettings();
+  }
+
+  Future<void> setEnableSiteParsing(bool enabled) async {
+    _settings.enableSiteParsing = enabled;
+    await saveSettings();
+  }
+
+  Future<void> setSiteEventsUrl(String url) async {
+    _settings.siteEventsUrl = url;
+    await saveSettings();
+  }
+
+  Future<void> setIdleExitTimeout(int seconds) async {
+    _settings.idleExitTimeout = seconds;
+    await saveSettings();
+  }
+
+  Future<void> setAutoStart(bool enabled) async {
+    _settings.autoStart = enabled;
+    await saveSettings();
+    
+    // Добавляем/удаляем ярлык в автозагрузку Windows
+    if (Platform.isWindows) {
+      await _updateWindowsAutoStart(enabled);
+    }
+  }
+
+  Future<void> _updateWindowsAutoStart(bool enabled) async {
+    try {
+      // Путь к папке автозагрузки
+      final appData = await getApplicationDocumentsDirectory();
+      final exePath = Platform.resolvedExecutable;
+      final shortcutPath = '${appData.path}\\..\\..\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\kiosk.lnk';
+      
+      if (enabled) {
+        // Создаем ярлык в автозагрузке через PowerShell
+        final psScript = '''
+        \$WshShell = New-Object -comObject WScript.Shell
+        \$Shortcut = \$WshShell.CreateShortcut("$shortcutPath")
+        \$Shortcut.TargetPath = "$exePath"
+        \$Shortcut.Save()
+        ''';
+        await Process.run('powershell', ['-Command', psScript]);
+        print('[SettingsService] Автозапуск включен: $shortcutPath');
+      } else {
+        // Удаляем ярлык
+        final file = File(shortcutPath);
+        if (await file.exists()) {
+          await file.delete();
+          print('[SettingsService] Автозапуск выключен');
+        }
+      }
+    } catch (e) {
+      print('[SettingsService] Ошибка настройки автозапуска: $e');
+    }
   }
 
   AppSettings get settings => _settings;

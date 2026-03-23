@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:crypto/crypto.dart';
 import '../utils/constants.dart';
 import '../services/data_service.dart';
+import '../services/settings_service.dart';
 import '../screens/afisha_screen.dart';
 
 class AfishaCarousel extends StatefulWidget {
@@ -17,6 +22,7 @@ class _AfishaCarouselState extends State<AfishaCarousel> {
   int _currentPage = 0;
   Timer? _timer;
   final _dataService = DataService();
+  final _settingsService = SettingsService();
   List<EventData> _events = [];
   bool _isLoading = true;
 
@@ -34,11 +40,20 @@ class _AfishaCarouselState extends State<AfishaCarousel> {
   }
 
   Future<void> _loadEvents() async {
-    await _dataService.loadEvents();
-    setState(() {
-      _events = _dataService.getEnabledEvents();
-      _isLoading = false;
-    });
+    final settings = await _settingsService.loadSettings();
+    
+    // Загружаем афишу с сайта или локальные события
+    final events = await _dataService.loadSiteEvents(
+      enableSiteParsing: settings.enableSiteParsing,
+      siteUrl: settings.siteEventsUrl,
+    );
+    
+    if (mounted) {
+      setState(() {
+        _events = events;
+        _isLoading = false;
+      });
+    }
     _startAutoScroll();
   }
 
@@ -157,13 +172,8 @@ class _AfishaCarouselState extends State<AfishaCarousel> {
             borderRadius: BorderRadius.circular(AppSizes.cardBorderRadius),
             child: Stack(
               children: [
-                if (event.imagePath.isNotEmpty && File(event.imagePath).existsSync())
-                  Positioned.fill(
-                    child: Image.file(
-                      File(event.imagePath),
-                      fit: BoxFit.cover,
-                    ),
-                  )
+                if (event.imagePath.isNotEmpty)
+                  _buildImage(event.imagePath)
                 else
                   Container(
                     color: Colors.transparent,
@@ -175,5 +185,111 @@ class _AfishaCarouselState extends State<AfishaCarousel> {
         ),
       ),
     );
+  }
+
+  Widget _buildImage(String imagePath) {
+    print('[AfishaCarousel] Загрузка изображения: $imagePath');
+    
+    // Проверяем, это URL (с сайта) или локальный файл
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      // Это URL с сайта — скачиваем и кэшируем
+      return _buildCachedImage(imagePath);
+    } else {
+      // Это локальный файл
+      final file = File(imagePath);
+      if (file.existsSync()) {
+        return Positioned.fill(
+          child: Image.file(
+            file,
+            fit: BoxFit.cover,
+          ),
+        );
+      } else {
+        print('[AfishaCarousel] Файл не найден: $imagePath');
+        return Container(
+          color: Colors.transparent,
+          child: const Icon(Icons.image, size: 64, color: AppColors.textSecondary),
+        );
+      }
+    }
+  }
+
+  Widget _buildCachedImage(String imageUrl) {
+    return FutureBuilder<File>(
+      future: _downloadAndCacheImage(imageUrl),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            color: Colors.black12,
+            child: const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+          );
+        }
+        
+        if (snapshot.hasError || !snapshot.hasData) {
+          print('[AfishaCarousel] Ошибка загрузки: ${snapshot.error}');
+          return Container(
+            color: Colors.black12,
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.broken_image, size: 64, color: AppColors.textSecondary),
+                SizedBox(height: 8),
+                Text('Ошибка загрузки', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              ],
+            ),
+          );
+        }
+        
+        final file = snapshot.data!;
+        return Positioned.fill(
+          child: Image.file(
+            file,
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<File> _downloadAndCacheImage(String imageUrl) async {
+    // Генерируем имя файла из URL
+    final hash = md5.convert(utf8.encode(imageUrl));
+    final fileName = '${hash.toString()}.jpg';
+    
+    // Получаем директорию для кэша
+    final appDir = await getApplicationDocumentsDirectory();
+    final cacheDir = Directory('${appDir.path}/afisha_cache');
+    if (!await cacheDir.exists()) {
+      await cacheDir.create(recursive: true);
+    }
+    
+    final cachedFile = File('${cacheDir.path}/$fileName');
+    
+    // Если файл уже есть в кэше — возвращаем его
+    if (await cachedFile.exists()) {
+      return cachedFile;
+    }
+    
+    // Скачиваем изображение
+    final response = await http
+        .get(
+          Uri.parse(imageUrl),
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+            'Referer': 'https://xn--b1admgmggbb7a6b.xn--p1ai/',
+          },
+        )
+        .timeout(const Duration(seconds: 15));
+    
+    if (response.statusCode == 200) {
+      await cachedFile.writeAsBytes(response.bodyBytes);
+      return cachedFile;
+    }
+    
+    throw Exception('HTTP ${response.statusCode}');
   }
 }

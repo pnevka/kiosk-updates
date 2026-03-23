@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../widgets/idle_exit_screen.dart';
 import '../utils/constants.dart';
 import '../services/data_service.dart';
 import '../models/admin_content.dart';
@@ -12,7 +13,7 @@ class KruzhkiScreen extends StatefulWidget {
   State<KruzhkiScreen> createState() => _KruzhkiScreenState();
 }
 
-class _KruzhkiScreenState extends State<KruzhkiScreen> {
+class _KruzhkiScreenState extends State<KruzhkiScreen> with IdleExitMixin<KruzhkiScreen> {
   final _dataService = DataService();
   List<CircleData> _circles = [];
   bool _isLoading = true;
@@ -21,6 +22,11 @@ class _KruzhkiScreenState extends State<KruzhkiScreen> {
   void initState() {
     super.initState();
     _loadCircles();
+  }
+
+  @override
+  void exitToHome(BuildContext context) {
+    Navigator.popUntil(context, (route) => route.isFirst);
   }
 
   Future<void> _loadCircles() async {

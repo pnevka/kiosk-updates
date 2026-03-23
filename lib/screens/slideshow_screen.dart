@@ -3,7 +3,8 @@ import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view.dart';
-import 'package:video_player/video_player.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import '../utils/constants.dart';
 import '../services/data_service.dart';
 import '../services/settings_service.dart';
@@ -22,8 +23,10 @@ class _SlideshowScreenState extends State<SlideshowScreen> {
   List<MediaData> _media = [];
   int _currentIndex = 0;
   Timer? _slideshowTimer;
-  VideoPlayerController? _videoController;
+  Player? _player;
+  VideoController? _videoController;
   bool _isVideo = false;
+  bool _isVideoPlaying = false;
 
   @override
   void initState() {
@@ -34,56 +37,115 @@ class _SlideshowScreenState extends State<SlideshowScreen> {
   Future<void> _loadMedia() async {
     final albums = await _dataService.loadAlbums();
     final allMedia = <MediaData>[];
-    
+
     for (final album in albums) {
       if (album.isEnabled) {
         allMedia.addAll(album.media);
       }
     }
-    
+
     // Shuffle media
     allMedia.shuffle(Random());
-    
+
     setState(() {
       _media = allMedia;
     });
-    
+
     if (_media.isNotEmpty) {
       _startSlideshow();
     }
   }
 
   void _startSlideshow() {
-    final settings = _settingsService.settings;
-    
     _showCurrentMedia();
-    
+  }
+
+  void _startSlideTimer() {
+    final settings = _settingsService.settings;
+
     _slideshowTimer?.cancel();
     _slideshowTimer = Timer.periodic(
       Duration(seconds: settings.slideshowInterval),
-      (_) => _nextSlide(),
+      (_) {
+        if (!_isVideoPlaying) {
+          _nextSlide();
+        }
+      },
     );
   }
 
   void _showCurrentMedia() {
     if (_media.isEmpty) return;
-    
+
     final media = _media[_currentIndex % _media.length];
-    
+
     setState(() {
       _isVideo = media.isVideo;
+      _isVideoPlaying = media.isVideo;
     });
-    
+
     if (media.isVideo) {
-      _videoController?.dispose();
-      _videoController = VideoPlayerController.file(File(media.filePath))
-        ..initialize().then((_) {
-          if (mounted) {
-            setState(() {});
-            _videoController?.play();
-            _videoController?.setLooping(true);
-          }
-        });
+      // Для видео не используем таймер - ждём завершения
+      _slideshowTimer?.cancel();
+
+      // Очищаем старый плеер
+      _player?.stop();
+      _player?.dispose();
+      _player = null;
+      _videoController = null;
+      setState(() {});
+
+      // Создаем новый плеер
+      _player = Player();
+
+      _videoController = VideoController(
+        _player!,
+        configuration: const VideoControllerConfiguration(
+          hwdec: 'no', // Отключаем аппаратное декодирование
+          enableHardwareAcceleration: false, // Отключаем GPU ускорение
+        ),
+      );
+
+      // НЕ зацикливаем видео - играем один раз
+      _player!.setPlaylistMode(PlaylistMode.single);
+
+      // Подписываемся на завершение видео
+      _player!.stream.completed.listen((completed) {
+        print('[Slideshow] Видео завершено: $completed');
+        if (completed && mounted) {
+          setState(() {
+            _isVideoPlaying = false;
+          });
+          // Переключаем на следующий слайд после завершения видео
+          _nextSlide();
+        }
+      });
+
+      _player!.stream.error.listen((error) {
+        print('[Slideshow] Ошибка видео: $error');
+        if (mounted) {
+          setState(() {
+            _isVideoPlaying = false;
+          });
+          _nextSlide();
+        }
+      });
+
+      _player!.open(Media(media.filePath)).then((_) {
+        print('[Slideshow] Видео открыто');
+        _player!.play();
+      }).catchError((error) {
+        print('[Slideshow] Ошибка открытия видео: $error');
+        if (mounted) {
+          setState(() {
+            _isVideoPlaying = false;
+          });
+          _nextSlide();
+        }
+      });
+    } else {
+      // Для фото используем таймер
+      _startSlideTimer();
     }
   }
 
@@ -96,14 +158,16 @@ class _SlideshowScreenState extends State<SlideshowScreen> {
 
   void _exitSlideshow() {
     _slideshowTimer?.cancel();
-    _videoController?.dispose();
+    _player?.stop();
+    _player?.dispose();
     Navigator.pop(context);
   }
 
   @override
   void dispose() {
     _slideshowTimer?.cancel();
-    _videoController?.dispose();
+    _player?.stop();
+    _player?.dispose();
     super.dispose();
   }
 
@@ -136,10 +200,12 @@ class _SlideshowScreenState extends State<SlideshowScreen> {
           children: [
             // Content
             Center(
-              child: _isVideo && _videoController != null && _videoController!.value.isInitialized
-                  ? AspectRatio(
-                      aspectRatio: _videoController!.value.aspectRatio,
-                      child: VideoPlayer(_videoController!),
+              child: _isVideo && _videoController != null
+                  ? Video(
+                      controller: _videoController!,
+                      width: double.infinity,
+                      height: double.infinity,
+                      controls: NoVideoControls, // Убираем элементы управления
                     )
                   : _media.isNotEmpty
                       ? PhotoView(
@@ -148,21 +214,6 @@ class _SlideshowScreenState extends State<SlideshowScreen> {
                           maxScale: PhotoViewComputedScale.covered * 2,
                         )
                       : Container(),
-            ),
-            // Exit hint (fades in after 2 seconds)
-            Positioned(
-              bottom: 50,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Text(
-                  'Коснитесь для выхода',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
-                    fontSize: 14,
-                  ),
-                ),
-              ),
             ),
           ],
         ),

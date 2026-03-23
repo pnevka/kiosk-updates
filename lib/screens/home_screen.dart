@@ -84,18 +84,42 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _startSlideshow() {
-    setState(() {
-      _slideshowActive = true;
-    });
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const SlideshowScreen()),
-    ).then((_) {
-      setState(() {
-        _slideshowActive = false;
+    // Проверяем, не на главном ли мы экране
+    final isFirstRoute = ModalRoute.of(context)?.settings.name == '/';
+    if (!isFirstRoute) {
+      // Если открыт другой экран — закрываем его и возвращаемся на главную
+      Navigator.popUntil(context, (route) => route.isFirst);
+      // Запускаем слайд-шоу с задержкой
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          setState(() {
+            _slideshowActive = true;
+          });
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SlideshowScreen()),
+          ).then((_) {
+            setState(() {
+              _slideshowActive = false;
+            });
+            _startIdleDetection();
+          });
+        }
       });
-      _startIdleDetection();
-    });
+    } else {
+      setState(() {
+        _slideshowActive = true;
+      });
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const SlideshowScreen()),
+      ).then((_) {
+        setState(() {
+          _slideshowActive = false;
+        });
+        _startIdleDetection();
+      });
+    }
   }
 
   @override
@@ -109,7 +133,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _navigateTo(String route) {
-    Navigator.pushNamed(context, route);
+    // Останавливаем таймер слайд-шоу при переходе на другой экран
+    _idleTimer?.cancel();
+    
+    Navigator.pushNamed(context, route).then((_) {
+      // При возврате перезапускаем таймер
+      _startIdleDetection();
+    });
   }
 
   void _handleTopLeftTap() {
@@ -236,6 +266,9 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
     }
+
+    // Останавливаем таймер слайд-шоу при открытии админ-панели
+    _idleTimer?.cancel();
 
     // Open admin panel
     Navigator.push(

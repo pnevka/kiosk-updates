@@ -2,7 +2,8 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view.dart';
-import 'package:video_player/video_player.dart';
+import '../widgets/media_kit_player.dart';
+import '../widgets/idle_exit_screen.dart';
 import '../utils/constants.dart';
 import '../services/data_service.dart';
 import '../models/admin_content.dart';
@@ -14,7 +15,7 @@ class GalleryScreen extends StatefulWidget {
   State<GalleryScreen> createState() => _GalleryScreenState();
 }
 
-class _GalleryScreenState extends State<GalleryScreen> {
+class _GalleryScreenState extends State<GalleryScreen> with IdleExitMixin<GalleryScreen> {
   final _dataService = DataService();
   List<AlbumData> _albums = [];
   bool _isLoading = true;
@@ -23,6 +24,11 @@ class _GalleryScreenState extends State<GalleryScreen> {
   void initState() {
     super.initState();
     _loadAlbums();
+  }
+
+  @override
+  void exitToHome(BuildContext context) {
+    Navigator.popUntil(context, (route) => route.isFirst);
   }
 
   Future<void> _loadAlbums() async {
@@ -434,7 +440,7 @@ class MediaViewerScreen extends StatefulWidget {
   State<MediaViewerScreen> createState() => _MediaViewerScreenState();
 }
 
-class _MediaViewerScreenState extends State<MediaViewerScreen> {
+class _MediaViewerScreenState extends State<MediaViewerScreen> with IdleExitMixin<MediaViewerScreen> {
   late PageController _pageController;
   late int _currentIndex;
 
@@ -446,78 +452,85 @@ class _MediaViewerScreenState extends State<MediaViewerScreen> {
   }
 
   @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
+  void exitToHome(BuildContext context) {
+    Navigator.popUntil(context, (route) => route.isFirst);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          PageView.builder(
-            controller: _pageController,
-            itemCount: widget.media.length,
-            onPageChanged: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
-            itemBuilder: (context, index) {
-              final media = widget.media[index];
-              if (media.isVideo) {
-                return _VideoPlayer(path: media.filePath);
-              } else {
-                return _ImageViewer(path: media.filePath);
-              }
-            },
-          ),
-          // Glass back button
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 30,
-            child: Center(
-              child: GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(30),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.arrow_back, color: Colors.white, size: 20),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Назад',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
+    return GestureDetector(
+      onTap: resetIdleTimer,
+      onPanDown: (_) => resetIdleTimer(),
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            PageView.builder(
+              controller: _pageController,
+              itemCount: widget.media.length,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+                resetIdleTimer();
+              },
+              itemBuilder: (context, index) {
+                final media = widget.media[index];
+                if (media.isVideo) {
+                  return MediaKitPlayer(path: media.filePath);
+                } else {
+                  return _ImageViewer(path: media.filePath);
+                }
+              },
+            ),
+            // Glass back button
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 30,
+              child: Center(
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    resetIdleTimer();
+                  },
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(30),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.2),
+                            width: 1,
                           ),
-                        ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Назад',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -534,106 +547,6 @@ class _ImageViewer extends StatelessWidget {
       imageProvider: FileImage(File(path)),
       minScale: PhotoViewComputedScale.contained,
       maxScale: PhotoViewComputedScale.covered * 2,
-    );
-  }
-}
-
-class _VideoPlayer extends StatefulWidget {
-  final String path;
-
-  const _VideoPlayer({required this.path});
-
-  @override
-  State<_VideoPlayer> createState() => _VideoPlayerState();
-}
-
-class _VideoPlayerState extends State<_VideoPlayer> {
-  late VideoPlayerController _controller;
-  bool _hasError = false;
-  String _errorMessage = '';
-
-  @override
-  void initState() {
-    super.initState();
-    
-    // Нормализуем путь (заменяем все слеши на правильные для Windows)
-    final normalizedPath = widget.path.replaceAll('/', '\\');
-    print('Путь к видео: ${widget.path}');
-    print('Нормализованный путь: $normalizedPath');
-    
-    // Проверяем, существует ли файл
-    final file = File(normalizedPath);
-    print('Файл существует: ${file.existsSync()}');
-    
-    if (!file.existsSync()) {
-      print('Файл не найден!');
-      setState(() {
-        _hasError = true;
-        _errorMessage = 'Файл не найден';
-      });
-      return;
-    }
-    
-    _controller = VideoPlayerController.file(file)
-      ..initialize().then((_) {
-        if (mounted) {
-          setState(() {});
-          _controller.setLooping(true); // Зацикливаем видео
-          _controller.play();
-          print('Видео воспроизводится');
-        }
-      }).catchError((error) {
-        print('Ошибка воспроизведения видео: $error');
-        if (mounted) setState(() {
-          _hasError = true;
-          _errorMessage = 'Неподдерживаемый формат видео\n\nКонвертируйте в MP4 (H.264 + AAC)';
-        });
-      });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_hasError) {
-      return Container(
-        color: Colors.black,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 64, color: AppColors.textSecondary),
-              const SizedBox(height: 24),
-              Text(
-                'Ошибка воспроизведения',
-                style: AppTextStyles.screensaverTitle.copyWith(fontSize: 20),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                _errorMessage,
-                style: AppTextStyles.screensaverHint.copyWith(fontSize: 14),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    if (!_controller.value.isInitialized) {
-      return Container(
-        color: Colors.black,
-        child: const Center(child: CircularProgressIndicator()),
-      );
-    }
-    return Center(
-      child: AspectRatio(
-        aspectRatio: _controller.value.aspectRatio,
-        child: VideoPlayer(_controller),
-      ),
     );
   }
 }

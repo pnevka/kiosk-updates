@@ -61,8 +61,31 @@ class _AdminPanelState extends State<AdminPanel> {
   }
 
   Future<void> _closeApp() async {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      await windowManager.close();
+    // Показываем диалог подтверждения
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text(
+          'Закрыть приложение?',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Закрыть'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      exit(0); // Принудительно закрываем приложение
     }
   }
 

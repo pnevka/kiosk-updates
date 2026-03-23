@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import '../models/admin_content.dart';
+import '../models/site_event.dart';
+import 'site_event_parser.dart';
+import 'package:crypto/crypto.dart';
 
 class EventData {
   final String id;
@@ -267,5 +270,104 @@ class DataService {
       _albums[index] = updatedAlbum;
       await saveAlbums();
     }
+  }
+
+  // Site events parsing
+  List<EventData> _siteEvents = [];
+
+  /// Загружает афишу с сайта
+  /// Если enableSiteParsing = false, возвращает локальные события
+  Future<List<EventData>> loadSiteEvents({
+    required bool enableSiteParsing,
+    required String siteUrl,
+  }) async {
+    if (!enableSiteParsing) {
+      // Парсинг отключён — возвращаем локальные события
+      return getEnabledEvents();
+    }
+
+    try {
+      final parser = SiteEventParser(eventsUrl: siteUrl);
+      final siteEvents = await parser.parseEvents();
+
+      if (siteEvents.isEmpty) {
+        print('[DataService] Сайт недоступен или пуст — используем локальные события');
+        return getEnabledEvents();
+      }
+
+      // Конвертируем SiteEvent в EventData
+      _siteEvents = siteEvents.map((siteEvent) {
+        return EventData(
+          id: const Uuid().v4(),
+          title: siteEvent.title.isNotEmpty ? siteEvent.title : 'Мероприятие',
+          description: null,
+          imagePath: siteEvent.imageUrl, // URL картинки вместо локального пути
+          date: DateTime.now(), // Дата будет взята из сайта позже (если нужно)
+          location: '',
+          isEnabled: true,
+        );
+      }).toList();
+
+      print('[DataService] Загружено ${_siteEvents.length} мероприятий с сайта');
+      
+      // Очищаем кэш — удаляем старые изображения
+      await _cleanupAfishaCache(_siteEvents);
+      
+      return _siteEvents;
+    } catch (e) {
+      print('[DataService] Ошибка загрузки с сайта: $e — используем локальные события');
+      return getEnabledEvents();
+    }
+  }
+
+  /// Очищает кэш афиши — удаляет файлы, которых нет в текущем списке
+  Future<void> _cleanupAfishaCache(List<EventData> currentEvents) async {
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final cacheDir = Directory('${appDir.path}/afisha_cache');
+      
+      if (!await cacheDir.exists()) {
+        return;
+      }
+
+      // Получаем список текущих URL
+      final currentUrls = currentEvents
+          .where((e) => e.imagePath.startsWith('http'))
+          .map((e) => e.imagePath)
+          .toSet();
+
+      // Получаем список файлов в кэше
+      final files = cacheDir.listSync();
+      
+      for (final file in files) {
+        if (file is File && file.path.endsWith('.jpg')) {
+          final fileName = file.uri.pathSegments.last;
+          final fileHash = fileName.replaceAll('.jpg', '');
+          
+          // Проверяем, есть ли файл в текущих URL
+          bool isStillUsed = false;
+          for (final url in currentUrls) {
+            final hash = md5.convert(utf8.encode(url)).toString();
+            if (hash == fileHash) {
+              isStillUsed = true;
+              break;
+            }
+          }
+          
+          // Если файл больше не используется — удаляем
+          if (!isStillUsed) {
+            await file.delete();
+            print('[DataService] Удалён устаревший кэш: ${file.path}');
+          }
+        }
+      }
+    } catch (e) {
+      print('[DataService] Ошибка очистки кэша: $e');
+    }
+  }
+
+  /// Возвращает последние загруженные события с сайта
+  List<EventData> getSiteEvents() {
+    return _siteEvents;
   }
 }

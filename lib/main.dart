@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:screen_retriever/screen_retriever.dart';
+import 'package:video_player_media_kit/video_player_media_kit.dart';
 import 'app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Инициализируем media_kit для Windows — это позволит использовать кодеки из K-Lite
+  VideoPlayerMediaKit.ensureInitialized(windows: true);
 
   if (Platform.isWindows) {
     await windowManager.ensureInitialized();
@@ -20,8 +24,8 @@ Future<void> main() async {
       minimumSize: Size(400, 700),
       center: true,
       backgroundColor: Colors.transparent,
-      skipTaskbar: false,
-      titleBarStyle: TitleBarStyle.hidden,
+      skipTaskbar: true, // Скрываем из панели задач
+      titleBarStyle: TitleBarStyle.hidden, // Скрываем заголовок
     );
 
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
@@ -32,6 +36,8 @@ Future<void> main() async {
       await windowManager.setPosition(Offset.zero);
       // Полноэкранный режим без рамки
       await windowManager.setFullScreen(true);
+      // Блокируем сворачивание и закрытие окна
+      await windowManager.setPreventClose(true);
     });
   } else if (Platform.isMacOS) {
     await windowManager.ensureInitialized();
