@@ -416,7 +416,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> with IdleExitMixi
           final file = snapshot.data!;
           return Image.file(
             file,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
             gaplessPlayback: true,
             width: double.infinity,
             height: double.infinity,
@@ -429,8 +429,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> with IdleExitMixi
       if (file.existsSync()) {
         return PhotoView(
           imageProvider: FileImage(file),
-          minScale: PhotoViewComputedScale.covered,
-          maxScale: PhotoViewComputedScale.covered * 2,
+          minScale: PhotoViewComputedScale.contained,
+          maxScale: PhotoViewComputedScale.contained * 2,
         );
       } else {
         return Container(
