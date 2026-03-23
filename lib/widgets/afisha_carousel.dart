@@ -98,7 +98,22 @@ class _AfishaCarouselState extends State<AfishaCarousel> {
   void dispose() {
     _timer?.cancel();
     _pageController.dispose();
+    // Очищаем кэш афиши при выходе
+    _cleanupCache();
     super.dispose();
+  }
+
+  Future<void> _cleanupCache() async {
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final cacheDir = Directory('${appDir.path}/afisha_cache');
+      if (await cacheDir.exists()) {
+        await cacheDir.delete(recursive: true);
+        print('[AfishaCarousel] Кэш очищен');
+      }
+    } catch (e) {
+      print('[AfishaCarousel] Ошибка очистки кэша: $e');
+    }
   }
 
   void _openEventDetail(EventData event) {

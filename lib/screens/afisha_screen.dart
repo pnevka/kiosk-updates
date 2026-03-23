@@ -117,12 +117,12 @@ class _AfishaScreenState extends State<AfishaScreen> with IdleExitMixin<AfishaSc
                                 ),
                               )
                             : GridView.builder(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  crossAxisSpacing: 12,
-                                  mainAxisSpacing: 12,
-                                  childAspectRatio: 0.75,
+                                  crossAxisCount: 4,
+                                  crossAxisSpacing: 10,
+                                  mainAxisSpacing: 10,
+                                  childAspectRatio: 0.65,
                                 ),
                                 itemCount: _events.length,
                                 itemBuilder: (context, index) {
@@ -187,18 +187,18 @@ class _AfishaScreenState extends State<AfishaScreen> with IdleExitMixin<AfishaSc
       onTap: () => _openEventDetail(event),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(8),
           color: AppColors.surface,
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+              color: AppColors.primary.withValues(alpha: 0.2),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(8),
           child: Stack(
             children: [
               if (event.imagePath.isNotEmpty)
@@ -206,7 +206,7 @@ class _AfishaScreenState extends State<AfishaScreen> with IdleExitMixin<AfishaSc
               else
                 Container(
                   color: AppColors.surface,
-                  child: const Icon(Icons.image, size: 48, color: AppColors.textSecondary),
+                  child: const Icon(Icons.image, size: 32, color: AppColors.textSecondary),
                 ),
               Positioned(
                 left: 0,
@@ -228,9 +228,9 @@ class _AfishaScreenState extends State<AfishaScreen> with IdleExitMixin<AfishaSc
                 ),
               ),
               Positioned(
-                left: 12,
-                right: 12,
-                bottom: 12,
+                left: 6,
+                right: 6,
+                bottom: 6,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -238,7 +238,7 @@ class _AfishaScreenState extends State<AfishaScreen> with IdleExitMixin<AfishaSc
                       event.title,
                       style: const TextStyle(
                         color: AppColors.textPrimary,
-                        fontSize: 14,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
                       maxLines: 2,
