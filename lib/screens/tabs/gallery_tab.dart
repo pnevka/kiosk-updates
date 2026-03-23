@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../utils/constants.dart';
 import '../../services/data_service.dart';
+import '../../services/video_thumbnail_service.dart';
 import '../../models/admin_content.dart';
 
 class GalleryTab extends StatefulWidget {
@@ -138,13 +139,13 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
   Future<void> _addMediaToAlbum(String albumId, bool isVideo) async {
     try {
       XFile? media;
-      
+
       if (isVideo) {
         media = await _imagePicker.pickVideo(source: ImageSource.gallery);
       } else {
         media = await _imagePicker.pickImage(source: ImageSource.gallery);
       }
-      
+
       if (media != null) {
         // Copy file to albums directory
         final appDir = await getApplicationDocumentsDirectory();
@@ -152,11 +153,18 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
         if (!await albumsDir.exists()) {
           await albumsDir.create(recursive: true);
         }
-        
+
         final fileName = DateTime.now().millisecondsSinceEpoch.toString();
         final ext = isVideo ? 'mp4' : 'jpg';
         final newPath = '${albumsDir.path}/media_$fileName.$ext';
         await File(media.path).copy(newPath);
+
+        String? thumbnailPath;
+        if (isVideo) {
+          // Генерируем превью для видео
+          thumbnailPath = await VideoThumbnailService().generateThumbnail(newPath);
+          print('[GalleryTab] Превью для видео: $thumbnailPath');
+        }
 
         final mediaData = MediaData(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -164,6 +172,17 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
           isVideo: isVideo,
           createdAt: DateTime.now(),
         );
+
+        // Если есть превью, добавляем его как отдельное фото перед видео
+        if (thumbnailPath != null && thumbnailPath.isNotEmpty) {
+          final thumbData = MediaData(
+            id: '${mediaData.id}_thumb',
+            filePath: thumbnailPath,
+            isVideo: false,
+            createdAt: DateTime.now(),
+          );
+          await _dataService.addMediaToAlbum(albumId, thumbData);
+        }
 
         await _dataService.addMediaToAlbum(albumId, mediaData);
         _showSuccess(isVideo ? 'Видео добавлено' : 'Фото добавлено');
