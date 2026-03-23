@@ -341,19 +341,17 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                               child: Stack(
                                 children: [
                                   if (media.isVideo)
-                                    // Для видео показываем превью (следующий элемент в альбоме)
-                                    (index + 1 < widget.album.media.length && 
-                                     widget.album.media[index + 1].id == '${media.id}_thumb')
-                                      ? Image.file(
-                                          File(widget.album.media[index + 1].filePath),
-                                          fit: BoxFit.cover,
-                                          width: double.infinity,
-                                          height: double.infinity,
-                                        )
-                                      : Container(
-                                          color: Colors.black54,
-                                          child: const Icon(Icons.videocam, color: Colors.white70, size: 32),
-                                        )
+                                    // Заглушка для видео с градиентом
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [Colors.deepPurple.shade800, Colors.blue.shade800],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                      ),
+                                      child: const Icon(Icons.play_circle_outline, color: Colors.white70, size: 48),
+                                    )
                                   else if (media.filePath.isNotEmpty && File(media.filePath).existsSync())
                                     Image.file(
                                       File(media.filePath),
