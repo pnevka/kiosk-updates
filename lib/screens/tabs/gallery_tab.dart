@@ -470,7 +470,7 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
               ),
               // Media grid - scrollable horizontally
               SizedBox(
-                height: 140,
+                height: 180,
                 child: album.media.isEmpty
                     ? const Center(
                         child: Text(
@@ -481,7 +481,7 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
                       )
                     : ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         itemCount: album.media.length,
                         itemBuilder: (context, i) {
                           final media = album.media[i];
@@ -490,25 +490,35 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
                             return const SizedBox.shrink();
                           }
                           return Container(
-                            width: 180,
-                            margin: const EdgeInsets.only(right: 8),
+                            width: 160,
+                            margin: const EdgeInsets.only(right: 10),
                             decoration: BoxDecoration(
                               color: AppColors.background,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 1.5),
                             ),
                             child: Stack(
                               children: [
                                 ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(10),
                                   child: media.isVideo
-                                      ? Container(
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [Colors.deepPurple.shade800, Colors.blue.shade800],
-                                            ),
-                                          ),
-                                          child: const Icon(Icons.videocam, color: Colors.white70, size: 40),
-                                        )
+                                      ? (media.thumbnailPath != null && File(media.thumbnailPath!).existsSync())
+                                          ? Image.file(
+                                              File(media.thumbnailPath!),
+                                              fit: BoxFit.cover,
+                                              width: double.infinity,
+                                              height: double.infinity,
+                                            )
+                                          : Container(
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [Colors.deepPurple.shade800, Colors.blue.shade800],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                ),
+                                              ),
+                                              child: const Icon(Icons.videocam, color: Colors.white70, size: 40),
+                                            )
                                       : (media.filePath.isNotEmpty && File(media.filePath).existsSync())
                                           ? Image.file(
                                               File(media.filePath),
@@ -520,33 +530,35 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
                                 ),
                                 // Delete button
                                 Positioned(
-                                  top: 4,
-                                  right: 4,
+                                  top: 6,
+                                  right: 6,
                                   child: GestureDetector(
                                     onTap: () => _removeMedia(album.id, media.id),
                                     child: Container(
-                                      padding: const EdgeInsets.all(4),
+                                      padding: const EdgeInsets.all(5),
                                       decoration: BoxDecoration(
-                                        color: Colors.red.withOpacity(0.8),
+                                        color: Colors.red.withOpacity(0.9),
                                         shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white, width: 1.5),
                                       ),
-                                      child: const Icon(Icons.close, color: Colors.white, size: 16),
+                                      child: const Icon(Icons.close, color: Colors.white, size: 18),
                                     ),
                                   ),
                                 ),
-                                if (media.isVideo)
+                                if (media.isVideo && (media.thumbnailPath == null || !File(media.thumbnailPath!).existsSync()))
                                   Positioned(
-                                    bottom: 4,
-                                    right: 4,
+                                    bottom: 6,
+                                    right: 6,
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                                       decoration: BoxDecoration(
                                         color: Colors.black54,
-                                        borderRadius: BorderRadius.circular(4),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: Colors.white24, width: 1),
                                       ),
                                       child: const Text(
                                         'ВИДЕО',
-                                        style: TextStyle(color: Colors.white, fontSize: 8),
+                                        style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                                       ),
                                     ),
                                   ),
