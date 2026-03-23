@@ -1,108 +1,27 @@
 import 'dart:io';
-import 'dart:typed_data';
-import 'package:ffmpeg_kit_flutter/ffmpeg_kit.dart';
-import 'package:ffmpeg_kit_flutter/return_code.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Сервис для генерации превью из видео через ffmpeg
+/// Сервис-заглушка для превью видео
+/// На Windows генерация превью не поддерживается
 class VideoThumbnailService {
   static final VideoThumbnailService _instance = VideoThumbnailService._internal();
   factory VideoThumbnailService() => _instance;
   VideoThumbnailService._internal();
 
-  /// Генерирует превью из первого кадра видео
-  /// Возвращает путь к файлу превью или null при ошибке
+  /// Возвращает null — превью не создаётся на Windows
   Future<String?> generateThumbnail(String videoPath) async {
-    try {
-      print('[VideoThumbnail] === НАЧАЛО ГЕНЕРАЦИИ ПРЕВЬЮ ===');
-      print('[VideoThumbnail] Видео: $videoPath');
-      
-      // Проверяем существование файла
-      final file = File(videoPath);
-      if (!await file.exists()) {
-        print('[VideoThumbnail] ❌ Файл не найден');
-        return null;
-      }
-      final fileSize = await file.length();
-      print('[VideoThumbnail] ✓ Файл существует, размер: ${fileSize ~/ 1024} КБ');
-
-      // Получаем директорию для превью
-      final appDir = await getApplicationDocumentsDirectory();
-      final thumbDir = Directory('${appDir.path}\\thumbnails');
-      if (!await thumbDir.exists()) {
-        await thumbDir.create(recursive: true);
-      }
-      print('[VideoThumbnail] ✓ Папка для превью: ${thumbDir.path}');
-
-      // Генерируем имя файла превью
-      final fileName = 'thumb_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final thumbPath = '${thumbDir.path}\\$fileName';
-
-      // FFmpeg команда для создания превью из первого кадра
-      // -ss 00:00:01 - переходим к началу (1 секунда для надёжности)
-      // -i input - входной файл
-      // -vframes 1 - только 1 кадр
-      // -vf scale=400:-1 - масштабируем до 400px по ширине
-      // -y - перезаписать если существует
-      final normalizedVideoPath = videoPath.replaceAll('\\', '/');
-      final normalizedThumbPath = thumbPath.replaceAll('\\', '/');
-      
-      final ffmpegCommand = '-ss 00:00:01 -i "$normalizedVideoPath" -vframes 1 -vf scale=400:-1 -y "$normalizedThumbPath"';
-      
-      print('[VideoThumbnail] 🎬 Запуск FFmpeg...');
-      print('[VideoThumbnail] Команда: $ffmpegCommand');
-      
-      final session = await FFmpegKit.execute(ffmpegCommand);
-      final returnCode = await session.getReturnCode();
-      
-      if (ReturnCode.isSuccess(returnCode)) {
-        // Проверяем, что файл создан
-        final thumbFile = File(thumbPath);
-        if (await thumbFile.exists()) {
-          final thumbSize = await thumbFile.length();
-          print('[VideoThumbnail] ✅ Превью создано: $thumbPath (${thumbSize ~/ 1024} КБ)');
-          return thumbPath;
-        } else {
-          print('[VideoThumbnail] ❌ Файл превью не создан после FFmpeg');
-        }
-      } else {
-        final failStackTrace = await session.getFailStackTrace();
-        print('[VideoThumbnail] ❌ Ошибка FFmpeg: $failStackTrace');
-        
-        // Пробуем без масштабирования
-        print('[VideoThumbnail] Пробуем без масштабирования...');
-        final ffmpegCommand2 = '-ss 00:00:01 -i "$normalizedVideoPath" -vframes 1 -y "$normalizedThumbPath"';
-        final session2 = await FFmpegKit.execute(ffmpegCommand2);
-        final returnCode2 = await session2.getReturnCode();
-        
-        if (ReturnCode.isSuccess(returnCode2)) {
-          final thumbFile = File(thumbPath);
-          if (await thumbFile.exists()) {
-            print('[VideoThumbnail] ✅ Превью создано (без масштабирования): $thumbPath');
-            return thumbPath;
-          }
-        }
-        print('[VideoThumbnail] ❌ Вторая попытка не удалась');
-      }
-      
-      return null;
-    } catch (e, stackTrace) {
-      print('[VideoThumbnail] ❌ ИСКЛЮЧЕНИЕ: $e');
-      print('[VideoThumbnail] Stack trace: $stackTrace');
-      return null;
-    }
+    print('[VideoThumbnail] Превью для видео не создаётся (Windows не поддерживает)');
+    return null;
   }
 
-  /// Очищает папку с превью
+  /// Очищает папку с превью (если была)
   Future<void> cleanupThumbnails() async {
     try {
       final appDir = await getApplicationDocumentsDirectory();
       final thumbDir = Directory('${appDir.path}\\thumbnails');
       if (await thumbDir.exists()) {
-        final files = thumbDir.listSync();
-        print('[VideoThumbnail] Удаление ${files.length} файлов превью...');
         await thumbDir.delete(recursive: true);
-        print('[VideoThumbnail] ✅ Превью очищены');
+        print('[VideoThumbnail] Превью очищены');
       }
     } catch (e) {
       print('[VideoThumbnail] Ошибка очистки: $e');

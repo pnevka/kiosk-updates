@@ -4,7 +4,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../utils/constants.dart';
 import '../../services/data_service.dart';
-import '../../services/video_thumbnail_service.dart';
 import '../../models/admin_content.dart';
 
 class GalleryTab extends StatefulWidget {
@@ -165,22 +164,6 @@ class _GalleryTabState extends State<GalleryTab> with SingleTickerProviderStateM
           isVideo: isVideo,
           createdAt: DateTime.now(),
         );
-
-        // Генерируем превью для видео
-        if (isVideo) {
-          print('[GalleryTab] Генерация превью для видео: $newPath');
-          final thumbnailPath = await VideoThumbnailService().generateThumbnail(newPath);
-          if (thumbnailPath != null && thumbnailPath.isNotEmpty) {
-            print('[GalleryTab] Превью создано: $thumbnailPath');
-            final thumbData = MediaData(
-              id: '${mediaData.id}_thumb',
-              filePath: thumbnailPath,
-              isVideo: false,
-              createdAt: DateTime.now(),
-            );
-            await _dataService.addMediaToAlbum(albumId, thumbData);
-          }
-        }
 
         await _dataService.addMediaToAlbum(albumId, mediaData);
         _showSuccess(isVideo ? 'Видео добавлено' : 'Фото добавлено');

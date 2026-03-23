@@ -341,11 +341,15 @@ class DataService {
     }
     await tempDir.create(recursive: true);
     
-    print('[DataService]Temp папка: ${tempDir.path}');
+    print('[DataService] Temp папка: ${tempDir.path}');
     
     for (int i = 0; i < events.length; i++) {
       final event = events[i];
       try {
+        // Извлекаем имя файла из URL
+        final urlParts = event.imageUrl.split('/');
+        final fileName = urlParts.isNotEmpty ? urlParts.last : 'afisha_$i.jpg';
+        
         // Скачиваем изображение
         final response = await http
             .get(
@@ -358,8 +362,7 @@ class DataService {
             .timeout(const Duration(seconds: 10));
         
         if (response.statusCode == 200) {
-          // Сохраняем локально
-          final fileName = 'afisha_${i}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          // Сохраняем локально с оригинальным именем
           final filePath = '${tempDir.path}\\$fileName';
           final file = File(filePath);
           await file.writeAsBytes(response.bodyBytes);
