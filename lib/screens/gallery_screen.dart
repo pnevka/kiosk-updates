@@ -270,12 +270,19 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   int _currentIndex = 0;
 
   void _openMedia(int index) {
+    // Если открыли превью — открываем следующее за ним медиа
+    int actualIndex = index;
+    if (index < widget.album.media.length && 
+        widget.album.media[index].id.endsWith('_thumb')) {
+      actualIndex = index + 1;
+    }
+    
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => MediaViewerScreen(
           media: widget.album.media,
-          initialIndex: index,
+          initialIndex: actualIndex,
         ),
       ),
     );
@@ -341,17 +348,25 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                               child: Stack(
                                 children: [
                                   if (media.isVideo)
-                                    // Заглушка для видео с градиентом
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [Colors.deepPurple.shade800, Colors.blue.shade800],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                      ),
-                                      child: const Icon(Icons.play_circle_outline, color: Colors.white70, size: 48),
-                                    )
+                                    // Для видео показываем превью (следующий элемент в альбоме)
+                                    (index + 1 < widget.album.media.length && 
+                                     widget.album.media[index + 1].id == '${media.id}_thumb')
+                                      ? Image.file(
+                                          File(widget.album.media[index + 1].filePath),
+                                          fit: BoxFit.cover,
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                        )
+                                      : Container(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [Colors.deepPurple.shade800, Colors.blue.shade800],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                          ),
+                                          child: const Icon(Icons.play_circle_outline, color: Colors.white70, size: 48),
+                                        )
                                   else if (media.filePath.isNotEmpty && File(media.filePath).existsSync())
                                     Image.file(
                                       File(media.filePath),
@@ -483,12 +498,81 @@ class _MediaViewerScreenState extends State<MediaViewerScreen> with IdleExitMixi
               },
               itemBuilder: (context, index) {
                 final media = widget.media[index];
+                // Пропускаем превью (thumb)
+                if (media.id.endsWith('_thumb')) {
+                  return const SizedBox.shrink();
+                }
                 if (media.isVideo) {
                   return MediaKitPlayer(path: media.filePath);
                 } else {
                   return _ImageViewer(path: media.filePath);
                 }
               },
+            ),
+            // Прозрачные кнопки переключения
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 80,
+              child: GestureDetector(
+                onTap: () {
+                  if (_currentIndex > 0) {
+                    _pageController.previousPage(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  }
+                  resetIdleTimer();
+                },
+                behavior: HitTestBehavior.translucent,
+                child: Container(
+                  width: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.black.withOpacity(0.3), Colors.transparent],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.chevron_left,
+                    color: Colors.white30,
+                    size: 48,
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 80,
+              child: GestureDetector(
+                onTap: () {
+                  if (_currentIndex < widget.media.length - 1) {
+                    _pageController.nextPage(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  }
+                  resetIdleTimer();
+                },
+                behavior: HitTestBehavior.translucent,
+                child: Container(
+                  width: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.transparent, Colors.black.withOpacity(0.3)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.chevron_right,
+                    color: Colors.white30,
+                    size: 48,
+                  ),
+                ),
+              ),
             ),
             // Glass back button
             Positioned(
