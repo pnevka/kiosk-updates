@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as parser;
 import 'package:html/dom.dart' as dom;
@@ -22,32 +24,42 @@ class SiteEventParser {
           ? eventsUrl
           : '$baseUrl$eventsUrl';
 
-      print('[SiteEventParser] Загрузка: $fullUrl');
+      print('[SiteEventParser] 🌐 Загрузка: $fullUrl');
 
       final response = await http
           .get(
             Uri.parse(fullUrl),
             headers: {
-              'User-Agent':
-                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+              'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
             },
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 30));
+
+      print('[SiteEventParser] HTTP статус: ${response.statusCode}');
 
       if (response.statusCode != 200) {
-        print(
-            '[SiteEventParser] Ошибка HTTP: ${response.statusCode}');
+        print('[SiteEventParser] ❌ Ошибка HTTP: ${response.statusCode}');
         return [];
       }
 
       final html = response.body;
+      print('[SiteEventParser] Размер HTML: ${html.length} байт');
+      
       final events = _parseHtml(html);
 
-      print('[SiteEventParser] Найдено мероприятий: ${events.length}');
+      print('[SiteEventParser] ✅ Найдено мероприятий: ${events.length}');
       return events;
+    } on TimeoutException catch (e) {
+      print('[SiteEventParser] ⏱️ Таймаут (30 сек) - проверьте интернет!');
+      return [];
+    } on SocketException catch (e) {
+      print('[SiteEventParser] 🚫 Ошибка сети: $e');
+      print('[SiteEventParser] 💡 Проверьте подключение к интернету на киоске!');
+      return [];
     } catch (e) {
-      print('[SiteEventParser] Ошибка парсинга: $e');
+      print('[SiteEventParser] ❌ Ошибка: $e');
       return [];
     }
   }

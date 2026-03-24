@@ -307,13 +307,13 @@ class DataService {
       }
 
       // Очищаем старую папку ПЕРЕД скачиванием новых
-      print('[DataService] Очистка старой папки с афишами...');
+      print('[DataService] 🗑️ Очистка старой папки с афишами...');
       await cleanupTempAfisha();
 
       // Скачиваем изображения локально
-      print('[DataService] Скачивание ${siteEvents.length} изображений...');
+      print('[DataService] 📥 Скачивание ${siteEvents.length} изображений...');
       final localEvents = await _downloadImagesLocally(siteEvents);
-      print('[DataService] Изображения загружены локально');
+      print('[DataService] ✅ Изображения загружены локально');
 
       // Конвертируем SiteEvent в EventData
       _siteEvents = localEvents.map((siteEvent) {
@@ -328,7 +328,7 @@ class DataService {
         );
       }).toList();
 
-      print('[DataService] Загружено ${_siteEvents.length} мероприятий с сайта');
+      print('[DataService] ✅ Загружено ${_siteEvents.length} мероприятий с сайта');
       
       // Очищаем старый кэш
       await _cleanupAfishaCache(_siteEvents);
@@ -336,7 +336,8 @@ class DataService {
       _isLoadingSiteEvents = false;
       return _siteEvents;
     } catch (e) {
-      print('[DataService] Ошибка загрузки с сайта: $e — используем локальные события');
+      print('[DataService] ❌ Ошибка загрузки с сайта: $e');
+      print('[DataService] 💡 Используем локальные события');
       _isLoadingSiteEvents = false;
       return getEnabledEvents();
     }
