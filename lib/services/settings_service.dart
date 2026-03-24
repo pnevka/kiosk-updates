@@ -9,7 +9,7 @@ class AppSettings {
   int slideshowInterval; // in seconds
   int idleTimeout; // seconds before slideshow starts on idle
   bool enableSiteParsing; // парсинг афиши с сайта
-  String siteEventsUrl; // URL страницы афиши
+  String siteEventsUrl; // Полный URL страницы афиши
   int idleExitTimeout; // секунды до возврата на главную при бездействии
   bool autoStart; // автозапуск при загрузке Windows
 
@@ -19,7 +19,7 @@ class AppSettings {
     this.slideshowInterval = 30,
     this.idleTimeout = 60,
     this.enableSiteParsing = false,
-    this.siteEventsUrl = '/afisha/',
+    this.siteEventsUrl = 'https://xn--b1admgmggbb7a6b.xn--p1ai/meropriyatiya/afisha/',
     this.idleExitTimeout = 180, // 3 минуты по умолчанию
     this.autoStart = false,
   });
@@ -44,7 +44,7 @@ class AppSettings {
       slideshowInterval: json['slideshowInterval'] ?? 30,
       idleTimeout: json['idleTimeout'] ?? 60,
       enableSiteParsing: json['enableSiteParsing'] ?? false,
-      siteEventsUrl: json['siteEventsUrl'] ?? '/afisha/',
+      siteEventsUrl: json['siteEventsUrl'] ?? 'https://xn--b1admgmggbb7a6b.xn--p1ai/meropriyatiya/afisha/',
       idleExitTimeout: json['idleExitTimeout'] ?? 180,
       autoStart: json['autoStart'] ?? false,
     );

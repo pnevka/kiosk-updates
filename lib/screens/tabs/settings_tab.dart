@@ -21,7 +21,7 @@ class _SettingsTabState extends State<SettingsTab> {
   int _slideshowInterval = 30;
   int _idleTimeout = 60;
   bool _enableSiteParsing = false;
-  String _siteEventsUrl = '/afisha/';
+  String _siteEventsUrl = 'https://xn--b1admgmggbb7a6b.xn--p1ai/meropriyatiya/afisha/';
   int _idleExitTimeout = 180;
   bool _autoStart = false;
   bool _isCheckingUpdate = false;
@@ -627,7 +627,7 @@ class _SettingsTabState extends State<SettingsTab> {
                 const Divider(color: AppColors.primary, height: 24),
                 // Site URL
                 const Text(
-                  'URL страницы афиши',
+                  'Полный URL страницы афиши',
                   style: TextStyle(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 8),
@@ -635,15 +635,14 @@ class _SettingsTabState extends State<SettingsTab> {
                   controller: _siteUrlController,
                   style: const TextStyle(color: AppColors.textPrimary),
                   decoration: InputDecoration(
-                    hintText: '/afisha/',
+                    hintText: 'https://example.com/afisha/',
                     hintStyle: const TextStyle(color: AppColors.textSecondary),
                     filled: true,
                     fillColor: AppColors.background,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    prefixText: 'https://xn--b1admgmggbb7a6b.xn--p1ai',
-                    prefixStyle: const TextStyle(color: AppColors.textSecondary),
+                    prefixIcon: const Icon(Icons.link),
                   ),
                   enabled: _enableSiteParsing,
                 ),

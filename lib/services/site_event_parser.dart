@@ -8,21 +8,18 @@ import '../models/site_event.dart';
 
 /// Сервис для парсинга афиши с сайта
 class SiteEventParser {
-  final String baseUrl;
   final String eventsUrl;
 
   SiteEventParser({
-    this.baseUrl = 'https://xn--b1admgmggbb7a6b.xn--p1ai',
-    this.eventsUrl = '/meropriyatiya/afisha/',
+    required this.eventsUrl,
   });
 
   /// Парсит мероприятия с сайта
   /// Возвращает список событий или пустой список при ошибке
   Future<List<SiteEvent>> parseEvents() async {
     try {
-      final fullUrl = eventsUrl.startsWith('http')
-          ? eventsUrl
-          : '$baseUrl$eventsUrl';
+      // Используем URL напрямую
+      final fullUrl = eventsUrl.trim();
 
       print('[SiteEventParser] 🌐 Загрузка: $fullUrl');
 
@@ -87,14 +84,16 @@ class SiteEventParser {
       
       // Пропускаем пустые и уже обработанные
       if (imageUrl.isEmpty || seenUrls.contains(imageUrl)) continue;
-      
+
       // Делаем URL абсолютным
       if (imageUrl.startsWith('/')) {
-        imageUrl = '$baseUrl$imageUrl';
+        // Извлекаем базовый URL из eventsUrl
+        final uri = Uri.parse(eventsUrl);
+        imageUrl = '${uri.scheme}://${uri.host}$imageUrl';
       } else if (!imageUrl.startsWith('http')) {
         continue;
       }
-      
+
       seenUrls.add(imageUrl);
 
       // Пытаемся найти заголовок мероприятия
@@ -159,7 +158,9 @@ class SiteEventParser {
     if (linkElement != null) {
       String link = linkElement.attributes['href'] ?? '';
       if (link.isNotEmpty && !link.startsWith('http')) {
-        return link.startsWith('/') ? '$baseUrl$link' : null;
+        // Извлекаем базовый URL из eventsUrl
+        final uri = Uri.parse(eventsUrl);
+        return link.startsWith('/') ? '${uri.scheme}://${uri.host}$link' : null;
       }
       return link.isNotEmpty ? link : null;
     }
